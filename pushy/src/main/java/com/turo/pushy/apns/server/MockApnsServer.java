@@ -38,7 +38,6 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.util.ReferenceCounted;
 import io.netty.util.concurrent.*;
 
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -59,8 +58,6 @@ public class MockApnsServer {
     private final PushNotificationHandlerFactory handlerFactory;
 
     private ChannelGroup allChannels;
-
-    public static final long AUTHENTICATION_TOKEN_EXPIRATION_MILLIS = TimeUnit.HOURS.toMillis(1);
 
     MockApnsServer(final SslContext sslContext, final PushNotificationHandlerFactory handlerFactory, final EventLoopGroup eventLoopGroup) {
         this.sslContext = sslContext;

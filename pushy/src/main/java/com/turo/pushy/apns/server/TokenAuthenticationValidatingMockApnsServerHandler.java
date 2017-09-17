@@ -22,12 +22,9 @@
 
 package com.turo.pushy.apns.server;
 
-import com.turo.pushy.apns.auth.AuthenticationToken;
 import com.turo.pushy.apns.auth.ApnsVerificationKey;
-import io.netty.handler.codec.http2.Http2ConnectionDecoder;
-import io.netty.handler.codec.http2.Http2ConnectionEncoder;
+import com.turo.pushy.apns.auth.AuthenticationToken;
 import io.netty.handler.codec.http2.Http2Headers;
-import io.netty.handler.codec.http2.Http2Settings;
 import io.netty.util.AsciiString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,11 +35,10 @@ import java.security.SignatureException;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
-class TokenAuthenticationValidatingMockApnsServerHandler extends AbstractValidatingMockApnsServerHandler {
-
-    private final boolean emulateExpiredFirstToken;
-    private boolean rejectedFirstExpiredToken = false;
+class TokenAuthenticationValidatingMockApnsServerHandler extends ValidatingPushNotificationHandler {
 
     private final Map<String, ApnsVerificationKey> verificationKeysByKeyId;
     private final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey;
@@ -52,56 +48,19 @@ class TokenAuthenticationValidatingMockApnsServerHandler extends AbstractValidat
     private static final AsciiString APNS_TOPIC_HEADER = new AsciiString("apns-topic");
     private static final AsciiString APNS_AUTHORIZATION_HEADER = new AsciiString("authorization");
 
+    private static final long AUTHENTICATION_TOKEN_EXPIRATION_MILLIS = TimeUnit.HOURS.toMillis(1);
+
     private static final Logger log = LoggerFactory.getLogger(TokenAuthenticationValidatingMockApnsServerHandler.class);
 
-    public static final class TokenAuthenticationMockApnsServerHandlerBuilder extends AbstractMockApnsServerHandlerBuilder {
-
-        private boolean emulateExpiredFirstToken;
-
-        private Map<String, ApnsVerificationKey> verificationKeysByKeyId;
-        private Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey;
-
-        public AbstractMockApnsServerHandlerBuilder emulateExpiredFirstToken(final boolean emulateExpiredFirstToken) {
-            this.emulateExpiredFirstToken = emulateExpiredFirstToken;
-            return this;
-        }
-
-        public AbstractMockApnsServerHandlerBuilder verificationKeysByKeyId(final Map<String, ApnsVerificationKey> verificationKeysByKeyId) {
-            this.verificationKeysByKeyId = verificationKeysByKeyId;
-            return this;
-        }
-
-        public AbstractMockApnsServerHandlerBuilder topicsByVerificationKey(final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey) {
-            this.topicsByVerificationKey = topicsByVerificationKey;
-            return this;
-        }
-
-        @Override
-        public TokenAuthenticationValidatingMockApnsServerHandler build(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings) {
-            final TokenAuthenticationValidatingMockApnsServerHandler handler = new TokenAuthenticationValidatingMockApnsServerHandler(decoder, encoder, initialSettings, super.emulateInternalErrors(), super.deviceTokenExpirationsByTopic(), emulateExpiredFirstToken, verificationKeysByKeyId, topicsByVerificationKey);
-            this.frameListener(handler);
-            return handler;
-        }
-
-        @Override
-        public AbstractValidatingMockApnsServerHandler build() {
-            return super.build();
-        }
-    }
-
-    protected TokenAuthenticationValidatingMockApnsServerHandler(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings, final boolean emulateInternalErrors, final Map<String, Map<String, Date>> deviceTokenExpirationsByTopic, final boolean emulateExpiredFirstToken, final Map<String, ApnsVerificationKey> verificationKeysByKeyId, final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey) {
-        super(decoder, encoder, initialSettings, emulateInternalErrors, deviceTokenExpirationsByTopic);
-
-        this.emulateExpiredFirstToken = emulateExpiredFirstToken;
+    TokenAuthenticationValidatingMockApnsServerHandler(final Map<String, Set<String>> deviceTokensByTopic, final Map<String, Date> expirationTimestampsByDeviceToken, final Map<String, ApnsVerificationKey> verificationKeysByKeyId, final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey) {
+        super(deviceTokensByTopic, expirationTimestampsByDeviceToken);
 
         this.verificationKeysByKeyId = verificationKeysByKeyId;
         this.topicsByVerificationKey = topicsByVerificationKey;
     }
 
     @Override
-    protected void verifyHeaders(final Http2Headers headers) throws RejectedNotificationException {
-        super.verifyHeaders(headers);
-
+    protected void verifyAuthentication(final Http2Headers headers, final UUID apnsId) throws RejectedNotificationException {
         final String base64EncodedAuthenticationToken;
         {
             final CharSequence authorizationSequence = headers.get(APNS_AUTHORIZATION_HEADER);
@@ -112,10 +71,10 @@ class TokenAuthenticationValidatingMockApnsServerHandler extends AbstractValidat
                 if (authorizationString.startsWith("bearer")) {
                     base64EncodedAuthenticationToken = authorizationString.substring("bearer".length()).trim();
                 } else {
-                    base64EncodedAuthenticationToken = null;
+                    throw new RejectedNotificationException(RejectionReason.MISSING_PROVIDER_TOKEN, apnsId);
                 }
             } else {
-                base64EncodedAuthenticationToken = null;
+                throw new RejectedNotificationException(RejectionReason.MISSING_PROVIDER_TOKEN, apnsId);
             }
         }
 
@@ -124,12 +83,12 @@ class TokenAuthenticationValidatingMockApnsServerHandler extends AbstractValidat
 
         // Have we ever heard of the key in question?
         if (verificationKey == null) {
-            throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN);
+            throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN, apnsId);
         }
 
         try {
             if (!authenticationToken.verifySignature(verificationKey)) {
-                throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN);
+                throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN, apnsId);
             }
         } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
             // This should never happen (here, at least) because we check keys at construction time. If something's
@@ -147,28 +106,29 @@ class TokenAuthenticationValidatingMockApnsServerHandler extends AbstractValidat
         }
 
         if (!this.expectedTeamId.equals(authenticationToken.getTeamId())) {
-            throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN);
+            throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN, apnsId);
         }
 
-        if (authenticationToken.getIssuedAt().getTime() + MockApnsServer.AUTHENTICATION_TOKEN_EXPIRATION_MILLIS < System.currentTimeMillis()) {
-            throw new RejectedNotificationException(RejectionReason.EXPIRED_PROVIDER_TOKEN);
-        }
-
-        if (this.emulateExpiredFirstToken && !this.rejectedFirstExpiredToken) {
-            this.rejectedFirstExpiredToken = true;
-            throw new RejectedNotificationException(RejectionReason.EXPIRED_PROVIDER_TOKEN);
+        if (authenticationToken.getIssuedAt().getTime() + AUTHENTICATION_TOKEN_EXPIRATION_MILLIS < System.currentTimeMillis()) {
+            throw new RejectedNotificationException(RejectionReason.EXPIRED_PROVIDER_TOKEN, apnsId);
         }
 
         final String topic;
         {
             final CharSequence topicSequence = headers.get(APNS_TOPIC_HEADER);
-            topic = (topicSequence != null) ? topicSequence.toString() : null;
+
+            if (topicSequence == null) {
+                // A topic is always required when using token authentication
+                throw new RejectedNotificationException(RejectionReason.MISSING_TOPIC, apnsId);
+            }
+
+            topic = topicSequence.toString();
         }
 
         final Set<String> topicsAllowedForVerificationKey = this.topicsByVerificationKey.get(verificationKey);
 
         if (topicsAllowedForVerificationKey == null || !topicsAllowedForVerificationKey.contains(topic)) {
-            throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN);
+            throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN, apnsId);
         }
     }
 }

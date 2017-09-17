@@ -66,7 +66,7 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
 
         private PushNotificationHandler pushNotificationHandler;
 
-        public MockApnsServerHandlerBuilder pushNotificationHandler(final PushNotificationHandler pushNotificationHandler) {
+        MockApnsServerHandlerBuilder pushNotificationHandler(final PushNotificationHandler pushNotificationHandler) {
             this.pushNotificationHandler = pushNotificationHandler;
             return this;
         }
@@ -92,11 +92,11 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
     private static class AcceptNotificationResponse {
         private final int streamId;
 
-        public AcceptNotificationResponse(final int streamId) {
+        AcceptNotificationResponse(final int streamId) {
             this.streamId = streamId;
         }
 
-        public int getStreamId() {
+        int getStreamId() {
             return this.streamId;
         }
     }
