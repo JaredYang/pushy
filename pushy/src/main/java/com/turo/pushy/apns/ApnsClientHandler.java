@@ -25,7 +25,6 @@ package com.turo.pushy.apns;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.turo.pushy.apns.util.DateAsTimeSinceEpochTypeAdapter;
-import com.turo.pushy.apns.util.ErrorResponse;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -88,20 +87,20 @@ class ApnsClientHandler extends Http2ConnectionHandler implements Http2FrameList
         private String authority;
         private long idlePingIntervalMillis;
 
-        public ApnsClientHandlerBuilder authority(final String authority) {
+        ApnsClientHandlerBuilder authority(final String authority) {
             this.authority = authority;
             return this;
         }
 
-        public String authority() {
+        String authority() {
             return this.authority;
         }
 
-        public long idlePingIntervalMillis() {
+        long idlePingIntervalMillis() {
             return idlePingIntervalMillis;
         }
 
-        public ApnsClientHandlerBuilder idlePingIntervalMillis(long idlePingIntervalMillis) {
+        ApnsClientHandlerBuilder idlePingIntervalMillis(final long idlePingIntervalMillis) {
             this.idlePingIntervalMillis = idlePingIntervalMillis;
             return this;
         }
@@ -141,7 +140,7 @@ class ApnsClientHandler extends Http2ConnectionHandler implements Http2FrameList
         }
     }
 
-    protected ApnsClientHandler(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings, final String authority, final long idlePingIntervalMillis) {
+    ApnsClientHandler(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings, final String authority, final long idlePingIntervalMillis) {
         super(decoder, encoder, initialSettings);
 
         this.authority = authority;

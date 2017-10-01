@@ -25,7 +25,6 @@ package com.turo.pushy.apns.server;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.turo.pushy.apns.util.DateAsTimeSinceEpochTypeAdapter;
-import com.turo.pushy.apns.util.ErrorResponse;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -143,6 +142,24 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
         }
     }
 
+    protected static class ErrorPayload {
+        private final String reason;
+        private final Date timestamp;
+
+        ErrorPayload(final String reason, final Date timestamp) {
+            this.reason = reason;
+            this.timestamp = timestamp;
+        }
+
+        String getReason() {
+            return this.reason;
+        }
+
+        Date getTimestamp() {
+            return this.timestamp;
+        }
+    }
+
     MockApnsServerHandler(final Http2ConnectionDecoder decoder,
                           final Http2ConnectionEncoder encoder,
                           final Http2Settings initialSettings,
@@ -241,7 +258,10 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
             this.pushNotificationHandler.handlePushNotification(headers, payload);
             context.channel().writeAndFlush(new AcceptNotificationResponse(stream.id()));
         } catch (final RejectedNotificationException e) {
-            context.channel().writeAndFlush(new RejectNotificationResponse(stream.id(), e.getApnsId(), e.getRejectionReason(), e.getDeviceTokenExpirationTimestamp()));
+            final Date deviceTokenExpirationTimestamp = e instanceof UnregisteredDeviceTokenException ?
+                    ((UnregisteredDeviceTokenException) e).getDeviceTokenExpirationTimestamp() : null;
+
+            context.channel().writeAndFlush(new RejectNotificationResponse(stream.id(), e.getApnsId(), e.getRejectionReason(), deviceTokenExpirationTimestamp));
         } catch (final Exception e) {
             context.channel().writeAndFlush(new InternalServerErrorResponse(stream.id()));
         } finally {
@@ -271,11 +291,11 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
 
             final byte[] payloadBytes;
             {
-                final ErrorResponse errorResponse =
-                        new ErrorResponse(rejectNotificationResponse.getErrorReason().getReasonText(),
+                final ErrorPayload errorPayload =
+                        new ErrorPayload(rejectNotificationResponse.getErrorReason().getReasonText(),
                                 rejectNotificationResponse.getTimestamp());
 
-                payloadBytes = GSON.toJson(errorResponse).getBytes();
+                payloadBytes = GSON.toJson(errorPayload).getBytes();
             }
 
             final ChannelPromise headersPromise = context.newPromise();

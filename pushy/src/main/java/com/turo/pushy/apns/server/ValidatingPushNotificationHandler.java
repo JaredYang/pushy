@@ -63,7 +63,7 @@ abstract class ValidatingPushNotificationHandler implements PushNotificationHand
             final CharSequence apnsIdSequence = headers.get(APNS_ID_HEADER);
             apnsId = apnsIdSequence != null ? UUID.fromString(apnsIdSequence.toString()) : UUID.randomUUID();
         } catch (final IllegalArgumentException e) {
-            throw new RejectedNotificationException(RejectionReason.BAD_MESSAGE_ID, UUID.randomUUID());
+            throw new RejectedNotificationException(RejectionReason.BAD_MESSAGE_ID, null);
         }
 
         if (!HttpMethod.POST.asciiName().contentEquals(headers.get(Http2Headers.PseudoHeaderName.METHOD.value()))) {
@@ -111,7 +111,7 @@ abstract class ValidatingPushNotificationHandler implements PushNotificationHand
                     final Date expirationTimestamp = this.expirationTimestampsByDeviceToken.get(deviceToken);
 
                     if (expirationTimestamp != null) {
-                        throw new RejectedNotificationException(RejectionReason.UNREGISTERED, apnsId, expirationTimestamp);
+                        throw new UnregisteredDeviceTokenException(expirationTimestamp, apnsId);
                     }
 
                     if (!this.deviceTokensByTopic.get(topic).contains(deviceToken)) {

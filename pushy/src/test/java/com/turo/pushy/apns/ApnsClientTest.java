@@ -250,7 +250,7 @@ public class ApnsClientTest {
 
     @Test
     @Parameters({"true", "false"})
-    public void testConnectToUntrustedServer(final boolean useTokenAuthentication) throws Exception {
+    public void testSendNotificationToUntrustedServer(final boolean useTokenAuthentication) throws Exception {
         final ApnsClient cautiousClient;
 
         if (useTokenAuthentication) {
@@ -535,7 +535,7 @@ public class ApnsClientTest {
                 return new PushNotificationHandler() {
                     @Override
                     public void handlePushNotification(final Http2Headers headers, final ByteBuf payload) throws RejectedNotificationException {
-                        throw new RejectedNotificationException(RejectionReason.UNREGISTERED, UUID.randomUUID(), expiration);
+                        throw new UnregisteredDeviceTokenException(expiration, null);
                     }
                 };
             }
@@ -649,7 +649,7 @@ public class ApnsClientTest {
                 return new PushNotificationHandler() {
                     @Override
                     public void handlePushNotification(final Http2Headers headers, final ByteBuf payload) throws RejectedNotificationException {
-                        throw new RejectedNotificationException(RejectionReason.BAD_DEVICE_TOKEN, UUID.randomUUID());
+                        throw new RejectedNotificationException(RejectionReason.BAD_DEVICE_TOKEN, null);
                     }
                 };
             }

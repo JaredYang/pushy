@@ -20,11 +20,11 @@
  * THE SOFTWARE.
  */
 
-package com.turo.pushy.apns.util;
+package com.turo.pushy.apns;
 
 import java.util.Date;
 
-public class ErrorResponse {
+class ErrorResponse {
     private final String reason;
     private final Date timestamp;
 
@@ -33,25 +33,11 @@ public class ErrorResponse {
         this.timestamp = timestamp;
     }
 
-    public String getReason() {
+    String getReason() {
         return this.reason;
     }
 
-    public Date getTimestamp() {
+    Date getTimestamp() {
         return this.timestamp;
-    }
-
-    /* (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
-    @Override
-    public String toString() {
-        final StringBuilder builder = new StringBuilder();
-        builder.append("ErrorResponse [reason=");
-        builder.append(this.reason);
-        builder.append(", timestamp=");
-        builder.append(this.timestamp);
-        builder.append("]");
-        return builder.toString();
     }
 }

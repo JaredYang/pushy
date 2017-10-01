@@ -29,8 +29,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.util.AsciiString;
 
-import java.util.UUID;
-
 class ExpireFirstTokenPushNotificationHandler implements PushNotificationHandler {
 
     private String rejectedAuthorizationHeader;
@@ -49,8 +47,7 @@ class ExpireFirstTokenPushNotificationHandler implements PushNotificationHandler
             }
 
             if (this.rejectedAuthorizationHeader.equals(authorizationHeader)) {
-                // We could get a real UUID from the headers, but for now, we know that none of our tests need it.
-                throw new RejectedNotificationException(RejectionReason.EXPIRED_PROVIDER_TOKEN, UUID.randomUUID());
+                throw new RejectedNotificationException(RejectionReason.EXPIRED_PROVIDER_TOKEN, null);
             }
         }
     }

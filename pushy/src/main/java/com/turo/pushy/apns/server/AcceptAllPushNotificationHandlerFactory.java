@@ -27,8 +27,24 @@ import io.netty.handler.codec.http2.Http2Headers;
 
 import javax.net.ssl.SSLSession;
 
+/**
+ * A factory for push notification handlers that unconditionally accept all push notifications.
+ *
+ * @see MockApnsServerBuilder#setHandlerFactory(PushNotificationHandlerFactory)
+ *
+ * @author <a href="https://github.com/jchambers">Jon Chambers</a>
+ *
+ * @since 0.12
+ */
 public class AcceptAllPushNotificationHandlerFactory implements PushNotificationHandlerFactory {
 
+    /**
+     * Constructs a new push notification handler that unconditionally accepts all push notifications.
+     *
+     * @param sslSession the SSL session associated with the channel for which this handler will handle notifications
+     *
+     * @return a new "accept everything" push notification handler
+     */
     @Override
     public PushNotificationHandler buildHandler(final SSLSession sslSession) {
         return new PushNotificationHandler() {

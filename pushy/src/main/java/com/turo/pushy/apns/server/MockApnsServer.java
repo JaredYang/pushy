@@ -41,7 +41,17 @@ import io.netty.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * TODO
+ * <p>A mock APNs server is an HTTP/2 server that can be configured to respond to APNs push notifications with a variety
+ * of behaviors. Mock servers are primarily useful for integration tests and benchmarks; users do <strong>not</strong>
+ * need to interact with mock servers as part of normal client operation.</p>
+ *
+ * <p>Callers construct mock APNs servers with the {@link MockApnsServerBuilder} class, and provide a
+ * {@link PushNotificationHandlerFactory} at construction time. The factory constructs {@link PushNotificationHandler}
+ * instances that control how the server responds to push notifications. Pushy comes with a
+ * {@link ValidatingPushNotificationHandlerFactory} that constructs handlers that emulate the behavior of a real APNs
+ * server (but do not actually deliver push notifications to destination devices) and an
+ * {@link AcceptAllPushNotificationHandlerFactory} that constructs handlers that unconditionally accept push
+ * notifications.</p>
  *
  * @author <a href="https://github.com/jchambers">Jon Chambers</a>
  *

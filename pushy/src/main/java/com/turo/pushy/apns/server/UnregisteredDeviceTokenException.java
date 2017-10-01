@@ -22,40 +22,37 @@
 
 package com.turo.pushy.apns.server;
 
+import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
  * An exception thrown by {@link PushNotificationHandler} instances to indicate that a push notification should be
- * rejected by the server. Handlers that need to reject a notification because its destination device token is no longer
- * valid should throw an {@link UnregisteredDeviceTokenException} instead.
+ * rejected by the server because its destination device token is no longer valid (presumably because the receiving app
+ * has been removed from the destination device).
  *
  * @since 0.12
  */
-public class RejectedNotificationException extends Exception {
-    private final RejectionReason errorReason;
-    private final UUID apnsId;
+public class UnregisteredDeviceTokenException extends RejectedNotificationException {
+    private final Date deviceTokenExpirationTimestamp;
 
     /**
-     * Constructs a new rejected notification exception with the given rejection reason and notification identifier.
+     * Constructs a new unregistered device token exception indicating that the device token expired at the given time.
      *
-     * @param rejectionReason the reason for the rejection
+     * @param deviceTokenExpirationTimestamp the time at which the destination device token expired
      * @param apnsId the notification identifier provided by the client that sent the notification; may be {@code null}
      * if the client did not provide an identifier or the identifier was invalid, in which case a server-generated
      * identifier will be used instead
      */
-    public RejectedNotificationException(final RejectionReason rejectionReason, final UUID apnsId) {
-        Objects.requireNonNull(rejectionReason, "Error reason must not be null.");
+    public UnregisteredDeviceTokenException(final Date deviceTokenExpirationTimestamp, final UUID apnsId) {
+        super(RejectionReason.UNREGISTERED, apnsId);
 
-        this.errorReason = rejectionReason;
-        this.apnsId = apnsId != null ? apnsId : UUID.randomUUID();
+        Objects.requireNonNull(deviceTokenExpirationTimestamp, "Device token expiration timestamp must not be null.");
+
+        this.deviceTokenExpirationTimestamp = deviceTokenExpirationTimestamp;
     }
 
-    RejectionReason getRejectionReason() {
-        return errorReason;
-    }
-
-    UUID getApnsId() {
-        return apnsId;
+    Date getDeviceTokenExpirationTimestamp() {
+        return deviceTokenExpirationTimestamp;
     }
 }

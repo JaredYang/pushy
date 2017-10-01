@@ -26,12 +26,24 @@ import com.turo.pushy.apns.auth.ApnsVerificationKey;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * <p>A push notification handler factory that constructs handlers that, to the extent possible, perform the same checks
+ * and validation steps as a real APNs server.</p>
+ *
+ * <p>Because handlers constructed by this factory try to emulate the behavior of real APNs servers, callers will need
+ * to provide collections of legal device tokens and token expiration times. If clients connect TLS-based
+ * authentication, handlers will derive a list of allowed topics from the client's certificate. If using token-based
+ * authentication, callers will need to specify a collection of public keys and topics to which those keys apply.</p>
+ *
+ * @since 0.12
+ */
 public class ValidatingPushNotificationHandlerFactory implements PushNotificationHandlerFactory {
 
     private final Map<String, Set<String>> deviceTokensByTopic;
@@ -40,12 +52,32 @@ public class ValidatingPushNotificationHandlerFactory implements PushNotificatio
     private final Map<String, ApnsVerificationKey> verificationKeysByKeyId;
     private final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey;
 
+    /**
+     * Constructs a new factory for push notification handlers that emulate the behavior of a real APNs server.
+     *
+     * @param deviceTokensByTopic a map of topics to the set of device tokens that may send push notifications to that
+     * topic; may be {@code null}, in which case constructed handlers will reject all notifications
+     * @param expirationTimestampsByDeviceToken a map of device tokens to the time at which they expire; tokens not in
+     * the map (or all tokens if the map is {@code null} or empty) will never be considered "expired"
+     * @param verificationKeysByKeyId a map of key identifiers to the keys with that identifier; only required for token
+     * authentication, and may be {@code null}, in which case all notifications sent with token authentication will be
+     * rejected
+     * @param topicsByVerificationKey a map of verification keys to the set of topics for which they may verify
+     * authentication tokens; only needed for token authentication, and may be {@code null} in which case all
+     * notifications sent with token authentication will be rejected
+     */
     public ValidatingPushNotificationHandlerFactory(final Map<String, Set<String>> deviceTokensByTopic, final Map<String, Date> expirationTimestampsByDeviceToken, final Map<String, ApnsVerificationKey> verificationKeysByKeyId, final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey) {
-        this.deviceTokensByTopic = deviceTokensByTopic;
-        this.expirationTimestampsByDeviceToken = expirationTimestampsByDeviceToken;
+        this.deviceTokensByTopic = deviceTokensByTopic != null ?
+                deviceTokensByTopic : Collections.<String, Set<String>>emptyMap();
 
-        this.verificationKeysByKeyId = verificationKeysByKeyId;
-        this.topicsByVerificationKey = topicsByVerificationKey;
+        this.expirationTimestampsByDeviceToken = expirationTimestampsByDeviceToken != null ?
+                expirationTimestampsByDeviceToken : Collections.<String, Date>emptyMap();
+
+        this.verificationKeysByKeyId = verificationKeysByKeyId != null ?
+                verificationKeysByKeyId : Collections.<String, ApnsVerificationKey>emptyMap();
+
+        this.topicsByVerificationKey = topicsByVerificationKey != null ?
+                topicsByVerificationKey : Collections.<ApnsVerificationKey, Set<String>>emptyMap();
     }
 
     @Override
