@@ -74,7 +74,7 @@ public class ValidatingPushNotificationHandlerFactory implements PushNotificatio
         } catch (final SSLPeerUnverifiedException e) {
             // No need for alarm; this is an expected case. If a client hasn't performed mutual TLS authentication, we
             // assume they want to use token authentication.
-            return new TokenAuthenticationValidatingMockApnsServerHandler(
+            return new TokenAuthenticationValidatingPushNotificationHandler(
                     this.deviceTokensByTopic,
                     this.expirationTimestampsByDeviceToken,
                     this.verificationKeysByKeyId,

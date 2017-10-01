@@ -22,12 +22,11 @@
 
 package com.turo.pushy.apns.server;
 
-import com.turo.pushy.apns.P12Util;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.InputStream;
-import java.security.KeyStore.PrivateKeyEntry;
+import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 
 public class MockApnsServerBuilderTest {
@@ -35,35 +34,43 @@ public class MockApnsServerBuilderTest {
     private static final String SERVER_CERTIFICATE_FILENAME = "/server-certs.pem";
     private static final String SERVER_KEY_FILENAME = "/server-key.pem";
     private static final String SERVER_KEYSTORE_FILENAME = "/server.p12";
-    private static final String KEYSTORE_PASSWORD = "pushy-test";
+    private static final String SERVER_KEYSTORE_ALIAS = "1";
+    private static final String SERVER_KEYSTORE_PASSWORD = "pushy-test";
 
     @Test
     public void testSetServerCredentialsFileFileString() throws Exception {
-        final File certificateFile = new File(MockApnsServerBuilderTest.class.getResource(SERVER_CERTIFICATE_FILENAME).toURI());
-        final File keyFile = new File(MockApnsServerBuilderTest.class.getResource(SERVER_KEY_FILENAME).toURI());
+        final File certificateFile = new File(this.getClass().getResource(SERVER_CERTIFICATE_FILENAME).toURI());
+        final File keyFile = new File(this.getClass().getResource(SERVER_KEY_FILENAME).toURI());
 
         // We're happy here as long as nothing explodes
         new MockApnsServerBuilder()
-        .setServerCredentials(certificateFile, keyFile, null)
-        .build();
+                .setServerCredentials(certificateFile, keyFile, null)
+                .build();
     }
 
     @Test
     public void testSetServerCredentialsInputStreamInputStreamString() throws Exception {
-        try (final InputStream certificateInputStream = MockApnsServerBuilderTest.class.getResourceAsStream(SERVER_CERTIFICATE_FILENAME);
-                final InputStream keyInputStream = MockApnsServerBuilderTest.class.getResourceAsStream(SERVER_KEY_FILENAME)) {
+        try (final InputStream certificateInputStream = this.getClass().getResourceAsStream(SERVER_CERTIFICATE_FILENAME);
+                final InputStream keyInputStream = this.getClass().getResourceAsStream(SERVER_KEY_FILENAME)) {
 
             // We're happy here as long as nothing explodes
             new MockApnsServerBuilder()
-            .setServerCredentials(certificateInputStream, keyInputStream, null)
-            .build();
+                    .setServerCredentials(certificateInputStream, keyInputStream, null)
+                    .build();
         }
     }
 
     @Test
     public void testSetServerCredentialsX509CertificateArrayPrivateKeyString() throws Exception {
-        try (final InputStream keystoreInputStream = MockApnsServerBuilderTest.class.getResourceAsStream(SERVER_KEYSTORE_FILENAME)) {
-            final PrivateKeyEntry privateKeyEntry = P12Util.getFirstPrivateKeyEntryFromP12InputStream(keystoreInputStream, KEYSTORE_PASSWORD);
+        try (final InputStream p12InputStream = this.getClass().getResourceAsStream(SERVER_KEYSTORE_FILENAME)) {
+            final KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            keyStore.load(p12InputStream, SERVER_KEYSTORE_PASSWORD.toCharArray());
+
+            final KeyStore.PasswordProtection passwordProtection =
+                    new KeyStore.PasswordProtection(SERVER_KEYSTORE_PASSWORD.toCharArray());
+
+            final KeyStore.PrivateKeyEntry privateKeyEntry =
+                    (KeyStore.PrivateKeyEntry) keyStore.getEntry(SERVER_KEYSTORE_ALIAS, passwordProtection);
 
             // We're happy here as long as nothing explodes
             new MockApnsServerBuilder()

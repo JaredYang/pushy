@@ -38,7 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-class TokenAuthenticationValidatingMockApnsServerHandler extends ValidatingPushNotificationHandler {
+class TokenAuthenticationValidatingPushNotificationHandler extends ValidatingPushNotificationHandler {
 
     private final Map<String, ApnsVerificationKey> verificationKeysByKeyId;
     private final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey;
@@ -50,9 +50,9 @@ class TokenAuthenticationValidatingMockApnsServerHandler extends ValidatingPushN
 
     private static final long AUTHENTICATION_TOKEN_EXPIRATION_MILLIS = TimeUnit.HOURS.toMillis(1);
 
-    private static final Logger log = LoggerFactory.getLogger(TokenAuthenticationValidatingMockApnsServerHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(TokenAuthenticationValidatingPushNotificationHandler.class);
 
-    TokenAuthenticationValidatingMockApnsServerHandler(final Map<String, Set<String>> deviceTokensByTopic, final Map<String, Date> expirationTimestampsByDeviceToken, final Map<String, ApnsVerificationKey> verificationKeysByKeyId, final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey) {
+    TokenAuthenticationValidatingPushNotificationHandler(final Map<String, Set<String>> deviceTokensByTopic, final Map<String, Date> expirationTimestampsByDeviceToken, final Map<String, ApnsVerificationKey> verificationKeysByKeyId, final Map<ApnsVerificationKey, Set<String>> topicsByVerificationKey) {
         super(deviceTokensByTopic, expirationTimestampsByDeviceToken);
 
         this.verificationKeysByKeyId = verificationKeysByKeyId;
