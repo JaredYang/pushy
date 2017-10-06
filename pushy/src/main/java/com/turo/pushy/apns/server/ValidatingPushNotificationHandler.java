@@ -28,6 +28,7 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.util.AsciiString;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
@@ -44,10 +45,12 @@ abstract class ValidatingPushNotificationHandler implements PushNotificationHand
     private static final AsciiString APNS_TOPIC_HEADER = new AsciiString("apns-topic");
     private static final AsciiString APNS_PRIORITY_HEADER = new AsciiString("apns-priority");
     private static final AsciiString APNS_ID_HEADER = new AsciiString("apns-id");
+    private static final AsciiString APNS_COLLAPSE_ID_HEADER = new AsciiString("apns-collapse-id");
 
     private static final Pattern DEVICE_TOKEN_PATTERN = Pattern.compile("[0-9a-fA-F]{64}");
 
     private static final int MAX_PAYLOAD_SIZE = 4096;
+    private static final int MAX_COLLAPSE_ID_SIZE = 64;
 
     ValidatingPushNotificationHandler(final Map<String, Set<String>> deviceTokensByTopic, final Map<String, Date> expirationTimestampsByDeviceToken) {
         this.deviceTokensByTopic = deviceTokensByTopic;
@@ -82,6 +85,14 @@ abstract class ValidatingPushNotificationHandler implements PushNotificationHand
         }
 
         {
+            final CharSequence collapseIdSequence = headers.get(APNS_COLLAPSE_ID_HEADER);
+
+            if (collapseIdSequence != null && collapseIdSequence.toString().getBytes(StandardCharsets.UTF_8).length > MAX_COLLAPSE_ID_SIZE) {
+                throw new RejectedNotificationException(RejectionReason.BAD_COLLAPSE_ID, apnsId);
+            }
+        }
+
+        {
             final Integer priorityCode = headers.getInt(APNS_PRIORITY_HEADER);
 
             if (priorityCode != null) {
@@ -99,7 +110,9 @@ abstract class ValidatingPushNotificationHandler implements PushNotificationHand
             if (pathSequence != null) {
                 final String pathString = pathSequence.toString();
 
-                if (pathString.startsWith(APNS_PATH_PREFIX)) {
+                if (pathSequence.toString().equals(APNS_PATH_PREFIX)) {
+                    throw new RejectedNotificationException(RejectionReason.MISSING_DEVICE_TOKEN, apnsId);
+                } else if (pathString.startsWith(APNS_PATH_PREFIX)) {
                     final String deviceToken = pathString.substring(APNS_PATH_PREFIX.length());
 
                     final Matcher tokenMatcher = DEVICE_TOKEN_PATTERN.matcher(deviceToken);
@@ -114,9 +127,13 @@ abstract class ValidatingPushNotificationHandler implements PushNotificationHand
                         throw new UnregisteredDeviceTokenException(expirationTimestamp, apnsId);
                     }
 
-                    if (!this.deviceTokensByTopic.get(topic).contains(deviceToken)) {
+                    final Set<String> allowedDeviceTokensForTopic = this.deviceTokensByTopic.get(topic);
+
+                    if (allowedDeviceTokensForTopic == null || !allowedDeviceTokensForTopic.contains(deviceToken)) {
                         throw new RejectedNotificationException(RejectionReason.DEVICE_TOKEN_NOT_FOR_TOPIC, apnsId);
                     }
+                } else {
+                    throw new RejectedNotificationException(RejectionReason.BAD_PATH, apnsId);
                 }
             } else {
                 throw new RejectedNotificationException(RejectionReason.BAD_PATH, apnsId);

@@ -78,7 +78,18 @@ class TokenAuthenticationValidatingPushNotificationHandler extends ValidatingPus
             }
         }
 
-        final AuthenticationToken authenticationToken = new AuthenticationToken(base64EncodedAuthenticationToken);
+        if (base64EncodedAuthenticationToken.trim().length() == 0) {
+            throw new RejectedNotificationException(RejectionReason.MISSING_PROVIDER_TOKEN, apnsId);
+        }
+
+        final AuthenticationToken authenticationToken;
+
+        try {
+            authenticationToken = new AuthenticationToken(base64EncodedAuthenticationToken);
+        } catch (final IllegalArgumentException e) {
+            throw new RejectedNotificationException(RejectionReason.INVALID_PROVIDER_TOKEN, apnsId);
+        }
+
         final ApnsVerificationKey verificationKey = this.verificationKeysByKeyId.get(authenticationToken.getKeyId());
 
         // Have we ever heard of the key in question?
