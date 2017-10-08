@@ -70,6 +70,14 @@ public class MockApnsServerBuilder {
 
     private EventLoopGroup eventLoopGroup;
 
+    private int maxConcurrentStreams = DEFAULT_MAX_CONCURRENT_STREAMS;
+
+    /**
+     * The default maximum number of concurrent streams for an APNs server, which matches the default limit set by the
+     * real APNs server at the time of this writing.
+     */
+    public static final int DEFAULT_MAX_CONCURRENT_STREAMS = 1500;
+
     private static final Logger log = LoggerFactory.getLogger(MockApnsServerBuilder.class);
 
     /**
@@ -233,8 +241,38 @@ public class MockApnsServerBuilder {
         return this;
     }
 
+    /**
+     * Sets the handler factory to be used to construct push notification handlers for the server under construction.
+     * Servers require a handler factory.
+     *
+     * @param handlerFactory the handler factory to be used by the server under construction
+     *
+     * @return a reference to this builder
+     *
+     * @since 0.12
+     */
     public MockApnsServerBuilder setHandlerFactory(final PushNotificationHandlerFactory handlerFactory) {
         this.handlerFactory = handlerFactory;
+        return this;
+    }
+
+    /**
+     * Sets the maximum number of concurrent HTTP/2 streams allowed by the server under construction. By default,
+     * mock servers will have a concurrent stream limit of {@value DEFAULT_MAX_CONCURRENT_STREAMS}.
+     *
+     * @param maxConcurrentStreams the maximum number of concurrent HTTP/2 streams allowed by the server under
+     * construction; must be positive
+     *
+     * @return a reference to this builder
+     *
+     * @since 0.12
+     */
+    public MockApnsServerBuilder setMaxConcurrentStreams(final int maxConcurrentStreams) {
+        if (maxConcurrentStreams <= 0) {
+            throw new IllegalArgumentException("Maximum number of concurrent streams must be positive.");
+        }
+
+        this.maxConcurrentStreams = maxConcurrentStreams;
         return this;
     }
 
@@ -248,6 +286,10 @@ public class MockApnsServerBuilder {
      * @since 0.8
      */
     public MockApnsServer build() throws SSLException {
+        if (this.handlerFactory == null) {
+            throw new IllegalStateException("Must provide a push notification handler factory before building a mock server.");
+        }
+
         final SslContext sslContext;
         {
             final SslProvider sslProvider;
@@ -297,7 +339,7 @@ public class MockApnsServerBuilder {
             sslContext = sslContextBuilder.build();
         }
 
-        final MockApnsServer server = new MockApnsServer(sslContext, this.handlerFactory, this.eventLoopGroup);
+        final MockApnsServer server = new MockApnsServer(sslContext, this.handlerFactory, this.maxConcurrentStreams, this.eventLoopGroup);
 
         if (sslContext instanceof ReferenceCounted) {
             ((ReferenceCounted) sslContext).release();

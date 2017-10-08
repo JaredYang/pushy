@@ -45,6 +45,7 @@ public class MockApnsServerBuilderTest {
         // We're happy here as long as nothing explodes
         new MockApnsServerBuilder()
                 .setServerCredentials(certificateFile, keyFile, null)
+                .setHandlerFactory(new AcceptAllPushNotificationHandlerFactory())
                 .build();
     }
 
@@ -56,6 +57,7 @@ public class MockApnsServerBuilderTest {
             // We're happy here as long as nothing explodes
             new MockApnsServerBuilder()
                     .setServerCredentials(certificateInputStream, keyInputStream, null)
+                    .setHandlerFactory(new AcceptAllPushNotificationHandlerFactory())
                     .build();
         }
     }
@@ -75,12 +77,37 @@ public class MockApnsServerBuilderTest {
             // We're happy here as long as nothing explodes
             new MockApnsServerBuilder()
                 .setServerCredentials(new X509Certificate[] { (X509Certificate) privateKeyEntry.getCertificate() }, privateKeyEntry.getPrivateKey(), null)
+                    .setHandlerFactory(new AcceptAllPushNotificationHandlerFactory())
                 .build();
         }
     }
 
     @Test(expected = IllegalStateException.class)
     public void testBuildWithoutServerCredentials() throws Exception {
-        new MockApnsServerBuilder().build();
+        new MockApnsServerBuilder()
+                .setHandlerFactory(new AcceptAllPushNotificationHandlerFactory())
+                .build();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testBuildWithoutHandlerFactory() throws Exception {
+        final File certificateFile = new File(this.getClass().getResource(SERVER_CERTIFICATE_FILENAME).toURI());
+        final File keyFile = new File(this.getClass().getResource(SERVER_KEY_FILENAME).toURI());
+
+        // We're happy here as long as nothing explodes
+        new MockApnsServerBuilder()
+                .setServerCredentials(certificateFile, keyFile, null)
+                .build();
+    }
+
+    @Test
+    public void testSetMaxConcurrentStreams() {
+        // We're happy here as long as nothing explodes
+        new MockApnsServerBuilder().setMaxConcurrentStreams(1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetNegativeMaxConcurrentStreams() {
+        new MockApnsServerBuilder().setMaxConcurrentStreams(-7);
     }
 }

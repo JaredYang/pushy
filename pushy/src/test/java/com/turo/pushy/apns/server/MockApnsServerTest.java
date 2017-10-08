@@ -42,6 +42,7 @@ public class MockApnsServerTest {
     public void setUp() throws Exception {
         this.server = new MockApnsServerBuilder()
                 .setServerCredentials(MockApnsServerTest.class.getResourceAsStream(SERVER_CERTIFICATES_FILENAME), MockApnsServerTest.class.getResourceAsStream(SERVER_KEY_FILENAME), null)
+                .setHandlerFactory(new AcceptAllPushNotificationHandlerFactory())
                 .build();
     }
 
@@ -64,6 +65,7 @@ public class MockApnsServerTest {
 
             final MockApnsServer providedGroupServer = new MockApnsServerBuilder()
                     .setServerCredentials(MockApnsServerTest.class.getResourceAsStream(SERVER_CERTIFICATES_FILENAME), MockApnsServerTest.class.getResourceAsStream(SERVER_KEY_FILENAME), null)
+                    .setHandlerFactory(new AcceptAllPushNotificationHandlerFactory())
                     .setEventLoopGroup(eventLoopGroup)
                     .build();
 
@@ -84,6 +86,7 @@ public class MockApnsServerTest {
 
             final MockApnsServer providedGroupServer = new MockApnsServerBuilder()
                     .setServerCredentials(MockApnsServerTest.class.getResourceAsStream(SERVER_CERTIFICATES_FILENAME), MockApnsServerTest.class.getResourceAsStream(SERVER_KEY_FILENAME), null)
+                    .setHandlerFactory(new AcceptAllPushNotificationHandlerFactory())
                     .setEventLoopGroup(eventLoopGroup)
                     .build();
 

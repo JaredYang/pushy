@@ -31,6 +31,7 @@ import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.http2.Http2Settings;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslContext;
@@ -65,18 +66,15 @@ public class MockApnsServer {
     private final ServerBootstrap bootstrap;
     private final boolean shouldShutDownEventLoopGroup;
 
-    private final PushNotificationHandlerFactory handlerFactory;
-
     private ChannelGroup allChannels;
 
-    MockApnsServer(final SslContext sslContext, final PushNotificationHandlerFactory handlerFactory, final EventLoopGroup eventLoopGroup) {
+    MockApnsServer(final SslContext sslContext, final PushNotificationHandlerFactory handlerFactory,
+                   final int maxConcurrentStreams, final EventLoopGroup eventLoopGroup) {
         this.sslContext = sslContext;
 
         if (this.sslContext instanceof ReferenceCounted) {
             ((ReferenceCounted) this.sslContext).retain();
         }
-
-        this.handlerFactory = handlerFactory;
 
         this.bootstrap = new ServerBootstrap();
 
@@ -101,12 +99,11 @@ public class MockApnsServer {
                     protected void configurePipeline(final ChannelHandlerContext context, final String protocol) throws Exception {
                         if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
                             final PushNotificationHandler pushNotificationHandler =
-                                    MockApnsServer.this.handlerFactory.buildHandler(sslHandler.engine().getSession());
+                                    handlerFactory.buildHandler(sslHandler.engine().getSession());
 
-                            // TODO Make initial stream limit configurable
-                            final MockApnsServerHandler serverHandler =
-                                    new MockApnsServerHandler.MockApnsServerHandlerBuilder()
+                            final MockApnsServerHandler serverHandler = new MockApnsServerHandler.MockApnsServerHandlerBuilder()
                                     .pushNotificationHandler(pushNotificationHandler)
+                                    .initialSettings(Http2Settings.defaultSettings().maxConcurrentStreams(maxConcurrentStreams))
                                     .build();
 
                             context.pipeline().addLast(serverHandler);
