@@ -249,30 +249,32 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
     public void onUnknownFrame(final ChannelHandlerContext ctx, final byte frameType, final int streamId, final Http2Flags flags, final ByteBuf payload) throws Http2Exception {
     }
 
-    // TODO Should we do this on a half-closed listener instead?
     private void handleEndOfStream(final ChannelHandlerContext context, final Http2Stream stream) {
         final Http2Headers headers = stream.getProperty(this.headersPropertyKey);
         final ByteBuf payload = stream.getProperty(this.payloadPropertyKey);
+        final ChannelPromise writePromise = context.newPromise();
 
         try {
             this.pushNotificationHandler.handlePushNotification(headers, payload);
-            context.channel().writeAndFlush(new AcceptNotificationResponse(stream.id()));
+            this.write(context, new AcceptNotificationResponse(stream.id()), writePromise);
         } catch (final RejectedNotificationException e) {
             final Date deviceTokenExpirationTimestamp = e instanceof UnregisteredDeviceTokenException ?
                     ((UnregisteredDeviceTokenException) e).getDeviceTokenExpirationTimestamp() : null;
 
-            context.channel().writeAndFlush(new RejectNotificationResponse(stream.id(), e.getApnsId(), e.getRejectionReason(), deviceTokenExpirationTimestamp));
+            this.write(context, new RejectNotificationResponse(stream.id(), e.getApnsId(), e.getRejectionReason(), deviceTokenExpirationTimestamp), writePromise);
         } catch (final Exception e) {
-            context.channel().writeAndFlush(new InternalServerErrorResponse(stream.id()));
+            this.write(context, new InternalServerErrorResponse(stream.id()), writePromise);
         } finally {
             if (stream.getProperty(this.payloadPropertyKey) != null) {
                 ((ByteBuf) stream.getProperty(this.payloadPropertyKey)).release();
             }
+
+            this.flush(context);
         }
     }
 
     @Override
-    public void write(final ChannelHandlerContext context, final Object message, final ChannelPromise writePromise) throws Exception {
+    public void write(final ChannelHandlerContext context, final Object message, final ChannelPromise writePromise) {
         if (message instanceof AcceptNotificationResponse) {
             final AcceptNotificationResponse acceptNotificationResponse = (AcceptNotificationResponse) message;
             this.encoder().writeHeaders(context, acceptNotificationResponse.getStreamId(), SUCCESS_HEADERS, 0, true, writePromise);
